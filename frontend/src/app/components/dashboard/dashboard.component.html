@@ -1,0 +1,116 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ greeting }}, {{ username }}</h1>
+      <p class="page-subtitle">{{ today | date:'fullDate' }} · Here is what is happening in your library.</p>
+    </div>
+    <button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading">↻ Refresh</button>
+  </div>
+
+  <div class="alert alert-warn" role="alert" *ngIf="accessDenied" style="margin-bottom:16px">
+    You do not have access to that page with your role ({{ isAdmin ? 'Admin' : 'Librarian' }}).
+  </div>
+
+  <div class="loading-block" *ngIf="loading" role="status"><span class="spinner"></span> Loading dashboard…</div>
+
+  <div *ngIf="!loading && failed">
+    <div class="alert alert-error" role="alert">
+      The dashboard could not be loaded. Check that the server is running, then try again.
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Retry</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && stats as s">
+    <section aria-label="Key figures" class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Active members</div><div class="stat-value">{{ s.totalMembers }}</div></div>
+      <div class="stat-card"><div class="stat-label">Book titles</div><div class="stat-value">{{ s.totalTitles }}</div>
+        <div class="stat-sub">{{ s.availableTitles }} in stock</div></div>
+      <div class="stat-card good"><div class="stat-label">Books on loan</div><div class="stat-value">{{ s.activeIssues }}</div>
+        <div class="stat-sub">{{ s.dueSoonCount }} due in 3 days</div></div>
+      <div class="stat-card" [class.danger]="s.overdueCount > 0"><div class="stat-label">Overdue</div>
+        <div class="stat-value">{{ s.overdueCount }}</div>
+        <div class="stat-sub">{{ s.overdueCount ? 'Needs follow-up' : 'All on time' }}</div></div>
+      <div class="stat-card"><div class="stat-label">Returns (30 days)</div><div class="stat-value">{{ s.returnedLast30Days }}</div>
+        <div class="stat-sub">{{ s.issuedLast30Days }} issued</div></div>
+      <div class="stat-card"><div class="stat-label">Fees collected</div><div class="stat-value">₹{{ s.feesCollected | number:'1.0-0' }}</div>
+        <div class="stat-sub">{{ s.damagedReturns }} damaged returns</div></div>
+    </section>
+
+    <div class="dash-grid">
+      <section class="card span-2" aria-labelledby="activity-h">
+        <h2 class="card-title" id="activity-h">Last 14 days
+          <span class="muted" style="font-weight:400;font-size:13px">{{ activityTotal.issued }} issued · {{ activityTotal.returned }} returned</span></h2>
+        <ng-container *ngIf="activity.length; else noActivity">
+          <div class="bars" role="img"
+               [attr.aria-label]="'Daily issues and returns for the last 14 days. Total ' + activityTotal.issued + ' issued and ' + activityTotal.returned + ' returned.'">
+            <div class="bar-col" *ngFor="let a of activity; let i = index">
+              <div class="bar-pair">
+                <div class="bar bar-issued" [style.height]="barHeight(a.issued)" [title]="a.issued + ' issued'"></div>
+                <div class="bar bar-returned" [style.height]="barHeight(a.returned)" [title]="a.returned + ' returned'"></div>
+              </div>
+              <div class="bar-label">{{ i % 2 === 0 ? (a.date | date:'d/M') : '' }}</div>
+            </div>
+          </div>
+          <div class="legend"><span><i style="background:var(--brand)"></i>Issued</span><span><i style="background:var(--accent)"></i>Returned</span></div>
+        </ng-container>
+        <ng-template #noActivity><app-empty-state icon="📈" title="No activity data" hint="Issue a book to start seeing activity."></app-empty-state></ng-template>
+      </section>
+
+      <section class="card" aria-labelledby="popular-h">
+        <h2 class="card-title" id="popular-h">Most issued books</h2>
+        <ol class="rank-list" *ngIf="popular.length; else noPopular">
+          <li class="rank-row" *ngFor="let p of popular; let i = index">
+            <span class="rank-no" aria-hidden="true">{{ i + 1 }}</span>
+            <div>
+              <div class="rank-title">{{ p.title }}</div>
+              <div class="rank-sub">{{ p.author }}</div>
+              <div class="rank-meter" aria-hidden="true"><span [style.width.%]="p.timesIssued / maxPopular * 100"></span></div>
+            </div>
+            <strong>{{ p.timesIssued }}×</strong>
+          </li>
+        </ol>
+        <ng-template #noPopular><app-empty-state icon="📚" title="No loans yet" hint="Popular books appear once books are issued."></app-empty-state></ng-template>
+      </section>
+
+      <section class="card" aria-labelledby="inv-h">
+        <h2 class="card-title" id="inv-h">Inventory</h2>
+        <ng-container *ngIf="inventory as inv; else noInv">
+          <dl class="kv">
+            <div><dt>Copies owned</dt><dd>{{ inv.totalCopies + inv.copiesOnLoan }}</dd></div>
+            <div><dt>On shelf</dt><dd>{{ inv.totalCopies }}</dd></div>
+            <div><dt>Out of stock</dt><dd>{{ inv.outOfStockTitles }}</dd></div>
+            <div><dt>Low stock (≤2)</dt><dd>{{ inv.lowStockTitles }}</dd></div>
+          </dl>
+          <ul class="rank-list" *ngIf="inv.byGenre.length">
+            <li class="rank-row" *ngFor="let g of inv.byGenre.slice(0, 5)" style="grid-template-columns:1fr auto">
+              <span>{{ g.genre }} <span class="muted">· {{ g.titles }} titles</span></span><strong>{{ g.copies }} copies</strong>
+            </li>
+          </ul>
+        </ng-container>
+        <ng-template #noInv><app-empty-state icon="🗄️" title="Inventory unavailable"></app-empty-state></ng-template>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="overdue-h">
+      <h2 class="card-title" id="overdue-h">Overdue loans
+        <a routerLink="/transactions" class="btn btn-ghost btn-sm" *ngIf="isLibrarian">All transactions →</a></h2>
+      <div class="table-wrap" *ngIf="overdue.length; else noOverdue" style="box-shadow:none">
+        <table class="data-table stack">
+          <thead><tr><th scope="col">Book</th><th scope="col">Member</th><th scope="col">Phone</th><th scope="col">Due</th><th scope="col">Days late</th><th scope="col">Fee so far</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let o of overdue.slice(0, 8)">
+              <td data-label="Book"><strong>{{ o.bookTitle }}</strong></td>
+              <td data-label="Member">{{ o.memberName }}</td>
+              <td data-label="Phone">{{ o.memberPhone || '—' }}</td>
+              <td data-label="Due" class="nowrap">{{ o.dueDate | date:'d MMM y' }}</td>
+              <td data-label="Days late"><span class="badge badge-danger">{{ o.daysOverdue }} days</span></td>
+              <td data-label="Fee so far">₹{{ o.accruedFee | number:'1.0-0' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint" *ngIf="overdue.length > 8">Showing 8 of {{ overdue.length }} overdue loans.</p>
+      <ng-template #noOverdue><app-empty-state icon="✅" title="Nothing overdue" hint="Every borrowed book is within its due date."></app-empty-state></ng-template>
+    </section>
+  </ng-container>
+</div>

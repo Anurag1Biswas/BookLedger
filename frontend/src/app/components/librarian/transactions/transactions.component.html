@@ -1,0 +1,95 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Transactions</h1>
+      <p class="page-subtitle">Every loan and return, newest first.</p>
+    </div>
+    <button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading">↻ Refresh</button>
+  </div>
+
+  <div class="tab-bar" role="tablist" aria-label="Transaction type">
+    <button type="button" role="tab" id="tab-issues" class="tab" [class.active]="tab === 'issues'" [attr.aria-selected]="tab === 'issues'" aria-controls="panel" (click)="setTab('issues')">
+      Active loans ({{ issues.length }})
+    </button>
+    <button type="button" role="tab" id="tab-returns" class="tab" [class.active]="tab === 'returns'" [attr.aria-selected]="tab === 'returns'" aria-controls="panel" (click)="setTab('returns')">
+      Returns ({{ submissions.length }})
+    </button>
+  </div>
+
+  <div class="toolbar" role="search">
+    <div class="field field-grow">
+      <label class="label" for="tx-search">Filter by book or member</label>
+      <div class="search-box"><span class="search-icon" aria-hidden="true">🔍</span>
+        <input id="tx-search" type="search" [(ngModel)]="search" (ngModelChange)="onFilterChange()" placeholder="Type to filter"></div>
+    </div>
+    <label class="checkbox-label" *ngIf="tab === 'issues'">
+      <input type="checkbox" [(ngModel)]="onlyOverdue" (ngModelChange)="onFilterChange()"> Overdue only ({{ overdueCount }})
+    </label>
+  </div>
+
+  <div class="alert alert-error" role="alert" *ngIf="loadError">{{ loadError }} <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Retry</button></div>
+  <div class="loading-block" *ngIf="loading" role="status"><span class="spinner"></span> Loading…</div>
+
+  <div id="panel" role="tabpanel" [attr.aria-labelledby]="'tab-' + tab" *ngIf="!loading && !loadError">
+    <ng-container *ngIf="tab === 'issues'">
+      <div class="table-wrap" *ngIf="pagedIssues.length; else noIssues">
+        <table class="data-table stack">
+          <caption class="sr-only">Active loans</caption>
+          <thead><tr><th scope="col">Book</th><th scope="col">Member</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let i of pagedIssues">
+              <td data-label="Book"><strong>{{ i.bookTitle }}</strong></td>
+              <td data-label="Member">{{ i.memberName }}</td>
+              <td data-label="Issued" class="nowrap">{{ i.issueDate | date:'d MMM y' }}</td>
+              <td data-label="Due" class="nowrap">{{ i.dueDate | date:'d MMM y' }}</td>
+              <td data-label="Status"><span class="badge" [ngClass]="i.overdue ? 'badge-danger' : 'badge-ok'">{{ i.overdue ? i.daysOverdue + ' days overdue' : 'On time' }}</span></td>
+              <td class="cell-actions">
+                <button type="button" class="btn btn-secondary btn-sm" *ngIf="i.overdue" (click)="generateOverdueMsg(i)" [disabled]="generatingFor === i.id"
+                        [attr.aria-label]="'Draft reminder for ' + i.memberName">
+                  <span class="spinner spinner-sm" *ngIf="generatingFor === i.id" aria-hidden="true"></span>
+                  {{ generatingFor === i.id ? 'Writing…' : '✉ Draft reminder' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noIssues>
+        <app-empty-state icon="📖" [title]="search || onlyOverdue ? 'No loans match your filters' : 'No books on loan'"
+          [hint]="search || onlyOverdue ? 'Clear the filter to see all loans.' : 'Issued books appear here until they are returned.'"></app-empty-state>
+      </ng-template>
+
+      <section class="ai-msg-box" *ngIf="overdueMsg" aria-live="polite" aria-label="Reminder draft">
+        <strong>✉ Reminder for {{ overdueFor }}</strong>
+        <p class="ai-msg-text">{{ overdueMsg }}</p>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="copyMsg()">{{ copied ? '✓ Copied' : 'Copy message' }}</button>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="overdueMsg = ''">Dismiss</button>
+        <p class="hint">Copy this message and send it to the member.</p>
+      </section>
+    </ng-container>
+
+    <ng-container *ngIf="tab === 'returns'">
+      <div class="table-wrap" *ngIf="pagedSubmissions.length; else noReturns">
+        <table class="data-table stack">
+          <caption class="sr-only">Returned books</caption>
+          <thead><tr><th scope="col">Book</th><th scope="col">Member</th><th scope="col">Returned</th><th scope="col">Days kept</th><th scope="col">Condition</th><th scope="col">Bill</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let s of pagedSubmissions">
+              <td data-label="Book"><strong>{{ s.bookTitle }}</strong></td>
+              <td data-label="Member">{{ s.memberName }}</td>
+              <td data-label="Returned" class="nowrap">{{ s.returnDate | date:'d MMM y' }}</td>
+              <td data-label="Days kept">{{ s.daysKept }}</td>
+              <td data-label="Condition"><span class="badge" [ngClass]="s.damaged ? 'badge-danger' : 'badge-ok'">{{ s.damaged ? 'Damaged' : 'Good' }}</span></td>
+              <td data-label="Bill">₹{{ s.billAmount | number:'1.0-0' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noReturns>
+        <app-empty-state icon="📦" [title]="search ? 'No returns match your filter' : 'No returns yet'" hint="Returned books and their fees are listed here."></app-empty-state>
+      </ng-template>
+    </ng-container>
+
+    <app-pagination [page]="pageIndex" [size]="pageSize" [totalElements]="total" [totalPages]="totalPages" (pageChange)="pageIndex = $event"></app-pagination>
+  </div>
+</div>

@@ -1,0 +1,39 @@
+<div class="page-container desk">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Issue a book</h1>
+      <p class="page-subtitle">Find the member and the book, then confirm. The loan is due in 10 days.</p>
+    </div>
+  </div>
+
+  <form class="card" (ngSubmit)="issueBook()" aria-label="Issue book form">
+    <app-entity-picker #memberPicker label="Member" placeholder="Search by name, or type the member ID"
+      [searchFn]="searchMembers" [display]="memberLabel" [sub]="memberSub" (picked)="member = $event; errorMsg = ''"></app-entity-picker>
+
+    <app-entity-picker #bookPicker label="Book" placeholder="Search by title or author, or type the book ID"
+      [searchFn]="searchBooks" [display]="bookLabel" [sub]="bookSub" (picked)="book = $event; errorMsg = ''"></app-entity-picker>
+    <p class="hint" style="margin-top:-8px;margin-bottom:16px">Only books that are in stock are listed.</p>
+
+    <div class="alert alert-error" role="alert" *ngIf="errorMsg" style="margin-bottom:16px">{{ errorMsg }}</div>
+
+    <button type="submit" class="btn btn-primary" [disabled]="!canIssue" (click)="issueBook()">
+      <span class="spinner spinner-sm" *ngIf="submitting" aria-hidden="true"></span>
+      {{ submitting ? 'Issuing…' : 'Issue book' }}
+    </button>
+  </form>
+
+  <section class="card" *ngIf="result" aria-live="polite" aria-labelledby="issued-h">
+    <h2 class="card-title" id="issued-h">✓ Book issued</h2>
+    <div class="bill">
+      <div class="bill-row"><span>Book</span><strong>{{ result.bookTitle }}</strong></div>
+      <div class="bill-row"><span>Member</span><strong>{{ result.memberName }}</strong></div>
+      <div class="bill-row"><span>Issued</span><strong>{{ result.issueDate | date:'d MMM y, h:mm a' }}</strong></div>
+      <div class="bill-row total"><span>Due back</span><strong>{{ result.dueDate | date:'d MMM y' }}</strong></div>
+    </div>
+  </section>
+
+  <section class="ai-msg-box" *ngIf="result" aria-live="polite">
+    <strong>🤖 <span *ngIf="loadingRecommendations">Finding similar books…</span><span *ngIf="!loadingRecommendations && recommendations">You might also enjoy</span></strong>
+    <p class="ai-msg-text" *ngIf="!loadingRecommendations">{{ recommendations }}</p>
+  </section>
+</div>

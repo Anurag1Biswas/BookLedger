@@ -1,0 +1,75 @@
+<!-- Floating Chat Button -->
+<div class="chat-fab" (click)="toggleChat()" [class.active]="isOpen">
+  <span *ngIf="!isOpen">🤖</span>
+  <span *ngIf="isOpen">✕</span>
+</div>
+
+<!-- Chat Window -->
+<div class="chat-window" *ngIf="isOpen">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="bot-avatar">🤖</div>
+    <div class="bot-info">
+      <div class="bot-name">LibraryBot</div>
+      <div class="bot-status">
+        <span class="status-dot"></span>
+        AI Powered Assistant
+      </div>
+    </div>
+    <button class="clear-btn" (click)="clearChat()" title="Clear chat">↺</button>
+  </div>
+
+  <!-- Chat Body -->
+  <div class="chat-body" #chatBody>
+
+    <!-- Messages -->
+    <div *ngFor="let msg of messages"
+         class="message-wrap"
+         [class.user-wrap]="msg.role === 'user'">
+      <div class="message"
+           [class.user-msg]="msg.role === 'user'"
+           [class.bot-msg]="msg.role === 'bot'">
+        {{ msg.text }}
+        <div class="msg-time">{{ msg.time }}</div>
+      </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div class="message-wrap" *ngIf="isLoading">
+      <div class="bot-msg message typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Suggested Questions -->
+  <div class="suggestions" *ngIf="messages.length <= 1">
+    <div class="suggestions-label">Try asking:</div>
+    <div class="suggestion-chips">
+      <button class="chip"
+              *ngFor="let q of suggestedQuestions"
+              (click)="sendMessage(q)">
+        {{ q }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-input-area">
+    <input
+      type="text"
+      [(ngModel)]="userInput"
+      (keypress)="onKeyPress($event)"
+      placeholder="Ask me anything..."
+      class="chat-input"
+      [disabled]="isLoading">
+    <button class="send-btn"
+            (click)="sendMessage()"
+            [disabled]="!userInput.trim() || isLoading">
+      ➤
+    </button>
+  </div>
+
+</div>

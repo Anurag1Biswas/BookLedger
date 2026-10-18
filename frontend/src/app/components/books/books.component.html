@@ -1,0 +1,134 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Books</h1>
+      <p class="page-subtitle">Search, filter and manage the catalogue.</p>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="openModal()">＋ Add book</button>
+  </div>
+
+  <form class="toolbar" role="search" aria-label="Filter books" (ngSubmit)="applyFilters()">
+    <div class="field field-grow">
+      <label class="label" for="book-search">Search title or author</label>
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input id="book-search" name="q" type="search" [(ngModel)]="searchQuery" (ngModelChange)="onSearchInput()" placeholder="e.g. Dune or Herbert">
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="book-genre">Genre</label>
+      <select id="book-genre" name="genre" [(ngModel)]="filterGenre" (change)="applyFilters()">
+        <option value="">All genres</option>
+        <option *ngFor="let g of genres" [value]="g">{{ g }}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="label" for="book-status">Availability</label>
+      <select id="book-status" name="status" [(ngModel)]="filterStatus" (change)="applyFilters()">
+        <option value="">All</option>
+        <option value="available">In stock</option>
+        <option value="unavailable">Out of stock</option>
+      </select>
+    </div>
+    <div class="field" style="min-width:110px">
+      <label class="label" for="book-size">Per page</label>
+      <select id="book-size" name="size" [(ngModel)]="pageSize" (change)="applyFilters()">
+        <option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option>
+      </select>
+    </div>
+    <button type="button" class="btn btn-ghost" *ngIf="hasFilters" (click)="resetFilters()">Clear filters</button>
+  </form>
+
+  <div class="alert alert-error" role="alert" *ngIf="loadError">
+    {{ loadError }} <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Retry</button>
+  </div>
+
+  <div class="loading-block" *ngIf="loading && !page" role="status"><span class="spinner"></span> Loading books…</div>
+
+  <ng-container *ngIf="page">
+    <div class="table-wrap" *ngIf="page.content.length; else empty" [style.opacity]="loading ? .6 : 1" [attr.aria-busy]="loading">
+      <table class="data-table stack">
+        <caption class="sr-only">Books in the catalogue</caption>
+        <thead>
+          <tr>
+            <th scope="col" [attr.aria-sort]="ariaSort('title')"><button type="button" class="th-sort" (click)="sortBy('title')">Title {{ sortField === 'title' ? (sortDir === 'asc' ? '▲' : '▼') : '' }}</button></th>
+            <th scope="col" [attr.aria-sort]="ariaSort('author')"><button type="button" class="th-sort" (click)="sortBy('author')">Author {{ sortField === 'author' ? (sortDir === 'asc' ? '▲' : '▼') : '' }}</button></th>
+            <th scope="col" [attr.aria-sort]="ariaSort('genre')"><button type="button" class="th-sort" (click)="sortBy('genre')">Genre {{ sortField === 'genre' ? (sortDir === 'asc' ? '▲' : '▼') : '' }}</button></th>
+            <th scope="col" [attr.aria-sort]="ariaSort('price')"><button type="button" class="th-sort" (click)="sortBy('price')">Price {{ sortField === 'price' ? (sortDir === 'asc' ? '▲' : '▼') : '' }}</button></th>
+            <th scope="col" [attr.aria-sort]="ariaSort('quantity')"><button type="button" class="th-sort" (click)="sortBy('quantity')">Stock {{ sortField === 'quantity' ? (sortDir === 'asc' ? '▲' : '▼') : '' }}</button></th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of page.content">
+            <td data-label="Title"><strong>{{ b.title }}</strong> <span class="muted">#{{ b.id }}</span></td>
+            <td data-label="Author">{{ b.author }}</td>
+            <td data-label="Genre"><span class="genre-tag" *ngIf="b.genre; else noGenre">{{ b.genre }}</span><ng-template #noGenre><span class="muted">—</span></ng-template></td>
+            <td data-label="Price">₹{{ b.price | number:'1.0-2' }}</td>
+            <td data-label="Stock">
+              <span class="badge" [ngClass]="b.quantity > 2 ? 'badge-ok' : b.quantity > 0 ? 'badge-warn' : 'badge-danger'">
+                {{ b.quantity > 0 ? b.quantity + ' in stock' : 'Out of stock' }}
+              </span>
+            </td>
+            <td class="cell-actions">
+              <div class="row-actions">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="editBook(b)" [attr.aria-label]="'Edit ' + b.title">Edit</button>
+                <button type="button" class="btn btn-secondary btn-sm text-danger" (click)="deleteBook(b)" [attr.aria-label]="'Remove ' + b.title">Remove</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #empty>
+      <app-empty-state *ngIf="hasFilters" icon="🔎" title="No books match your filters" hint="Try a different search term or clear the filters.">
+        <button type="button" class="btn btn-secondary" (click)="resetFilters()">Clear filters</button>
+      </app-empty-state>
+      <app-empty-state *ngIf="!hasFilters" icon="📚" title="No books in the catalogue yet" hint="Add your first book to get started.">
+        <button type="button" class="btn btn-primary" (click)="openModal()">＋ Add book</button>
+      </app-empty-state>
+    </ng-template>
+    <app-pagination [page]="page.page" [size]="page.size" [totalElements]="page.totalElements" [totalPages]="page.totalPages" (pageChange)="goTo($event)"></app-pagination>
+  </ng-container>
+</div>
+
+<app-modal [open]="showModal" [title]="editingId ? 'Edit book' : 'Add a book'" (closed)="closeModal()">
+  <form id="book-form" [formGroup]="form" (ngSubmit)="saveBook()" novalidate>
+    <div class="form-group">
+      <label class="label required" for="f-title">Title</label>
+      <input id="f-title" type="text" formControlName="title" [class.invalid]="err('title')" [attr.aria-invalid]="!!err('title')" aria-describedby="f-title-err">
+      <div class="field-error" id="f-title-err" *ngIf="err('title') as e">{{ e }}</div>
+    </div>
+    <div class="form-group">
+      <label class="label required" for="f-author">Author</label>
+      <input id="f-author" type="text" formControlName="author" [class.invalid]="err('author')" [attr.aria-invalid]="!!err('author')" aria-describedby="f-author-err">
+      <div class="field-error" id="f-author-err" *ngIf="err('author') as e">{{ e }}</div>
+    </div>
+    <div class="form-group">
+      <label class="label" for="f-genre">Genre</label>
+      <input id="f-genre" type="text" formControlName="genre" list="genre-options" aria-describedby="f-genre-hint">
+      <datalist id="genre-options"><option *ngFor="let g of genres" [value]="g"></option></datalist>
+      <div class="hint" id="f-genre-hint">Leave empty and the AI assistant will suggest a genre.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="label required" for="f-price">Price (₹)</label>
+        <input id="f-price" type="number" min="0" step="0.01" formControlName="price" [class.invalid]="err('price')" [attr.aria-invalid]="!!err('price')" aria-describedby="f-price-err">
+        <div class="field-error" id="f-price-err" *ngIf="err('price') as e">{{ e }}</div>
+      </div>
+      <div class="form-group">
+        <label class="label required" for="f-qty">Quantity</label>
+        <input id="f-qty" type="number" min="1" step="1" formControlName="quantity" [class.invalid]="err('quantity')" [attr.aria-invalid]="!!err('quantity')" aria-describedby="f-qty-err">
+        <div class="field-error" id="f-qty-err" *ngIf="err('quantity') as e">{{ e }}</div>
+      </div>
+    </div>
+    <p class="hint" *ngIf="!editingId">Adding a title that already exists (same title and author) adds copies to it.</p>
+  </form>
+  <div modal-footer>
+    <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="book-form" class="btn btn-primary" [disabled]="saving">
+      <span class="spinner spinner-sm" *ngIf="saving" aria-hidden="true"></span>
+      {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Add book') }}
+    </button>
+  </div>
+</app-modal>

@@ -1,0 +1,55 @@
+<div class="page-container desk">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Return a book</h1>
+      <p class="page-subtitle">Pick the member, choose the book being returned and check its condition.</p>
+    </div>
+  </div>
+
+  <section class="card" aria-label="Return details">
+    <app-entity-picker #memberPicker label="Member" placeholder="Search by name, or type the member ID"
+      [searchFn]="searchMembers" [display]="memberLabel" [sub]="memberSub" (picked)="onMember($event)"></app-entity-picker>
+
+    <div class="loading-block" *ngIf="loadingIssues" role="status" style="padding:20px"><span class="spinner spinner-sm"></span> Loading loans…</div>
+
+    <ng-container *ngIf="member && !loadingIssues">
+      <p class="muted" *ngIf="!memberIssues.length">{{ member.name }} has no books on loan.</p>
+
+      <fieldset style="border:0;padding:0;margin:0" *ngIf="memberIssues.length">
+        <legend class="label">Books on loan — choose one to return</legend>
+        <div class="loan-list">
+          <button type="button" class="loan-option" *ngFor="let i of memberIssues"
+                  [attr.aria-pressed]="selectedIssue?.id === i.id" (click)="select(i)">
+            <span><strong>{{ i.bookTitle }}</strong><br><span class="muted">Issued {{ i.issueDate | date:'d MMM y' }}</span></span>
+            <span class="badge" [ngClass]="i.overdue ? 'badge-danger' : 'badge-ok'">
+              {{ i.overdue ? i.daysOverdue + ' days overdue' : 'Due ' + (i.dueDate | date:'d MMM') }}
+            </span>
+          </button>
+        </div>
+      </fieldset>
+    </ng-container>
+
+    <div *ngIf="selectedIssue" style="margin-top:18px">
+      <label class="checkbox-label"><input type="checkbox" [(ngModel)]="isDamaged" name="damaged"> Book is being returned damaged</label>
+      <div class="alert alert-warn" *ngIf="isDamaged" role="status">The full book price will be added to the fee.</div>
+    </div>
+
+    <div class="alert alert-error" role="alert" *ngIf="errorMsg" style="margin-top:16px">{{ errorMsg }}</div>
+
+    <button type="button" class="btn btn-primary" style="margin-top:18px" [disabled]="!selectedIssue || submitting" (click)="returnBook()">
+      <span class="spinner spinner-sm" *ngIf="submitting" aria-hidden="true"></span>
+      {{ submitting ? 'Processing…' : 'Process return' }}
+    </button>
+  </section>
+
+  <section class="card" *ngIf="result" aria-live="polite" aria-labelledby="ret-h">
+    <h2 class="card-title" id="ret-h">✓ Book returned</h2>
+    <div class="bill">
+      <div class="bill-row"><span>Book</span><strong>{{ result.bookTitle }}</strong></div>
+      <div class="bill-row"><span>Member</span><strong>{{ result.memberName }}</strong></div>
+      <div class="bill-row"><span>Days kept</span><strong>{{ result.daysKept }}</strong></div>
+      <div class="bill-row" *ngIf="result.damaged"><span>Condition</span><strong class="text-danger">Damaged</strong></div>
+      <div class="bill-row total"><span>Total bill</span><strong>₹{{ result.billAmount }}</strong></div>
+    </div>
+  </section>
+</div>
